@@ -51,7 +51,7 @@ Implementing the same matching logic as closely as possible in Julia:
          samples:          3
          evals/sample:     1
     
-Julia allows us to fuse several matrix operations into one. Applying the modified matching algorithm with the fused matrix operation in Julia:
+Julia allows us to fuse several matrix operations into one. Applying the modified matching algorithm with the fused matrix operations:
   
      @benchmark matchesfuse(res, single_res_Δ, 1e-5) samples=5
   
