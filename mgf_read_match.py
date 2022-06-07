@@ -1,12 +1,12 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import numpy as np
 import pandas as pd
+import timeit
+import random
+from functools import reduce
 
+import sys
+print('Running version:')
+print(sys.version)
 
 # Write a function for mgf reading into an object
 
@@ -16,7 +16,7 @@ import pandas as pd
 def load_mgf(fname):
     '''Read the file into one huge list, without pre-defined format'''
     FIELDS = ('TITLE=', 'RTINSECONDS=', 'PEPMASS=', 'CHARGE=', 'SCANS=')
-    
+
     def format_precursor(spectrum):
         #Cover for a case when there's no precursor intensity
         if ' ' in spectrum['PEPMASS']:
@@ -85,14 +85,18 @@ fname = 'Yeast_1000spectra.mgf'
 # In[4]:
 
 
-get_ipython().run_cell_magic('timeit', '-r 20', 'load_mgf(fname)')
-
+#get_ipython().run_cell_magic('timeit', '-r 20', #'load_mgf(fname)')
+t = lambda: load_mgf(fname)
+print('Timing the load_mgf function:')
+num_reps = 200
+r = timeit.repeat(t, repeat = num_reps, number=1)
+print(f'Mean time {np.mean(r)*1000:.1f} ms, standard deviation {np.std(r)*1000:.1f} ms for {num_reps} repeats')
 
 # In[5]:
 
 
 res = load_mgf(fname)
-len(res)
+#print(len(res))
 
 
 # In[6]:
@@ -130,7 +134,7 @@ AA_DELTAS = {
 singleResDeltas = np.array(
     list( AA_DELTAS.values() ), dtype = 'float64'
 )
-print(singleResDeltas.dtype)
+#print(singleResDeltas.dtype)
 #Add doubly-charged and triply-charged mass Deltas (simply divide by 2 and 3)
 singleResDeltas = np.concatenate(
     (
@@ -139,8 +143,8 @@ singleResDeltas = np.concatenate(
         singleResDeltas / 3
     )
 )
-print(singleResDeltas.shape)
-singleResDeltas[:5]
+#print(singleResDeltas.shape)
+#print(singleResDeltas[:5])
 
 
 # Now take the spectra one-by-one, find pairwise mass differences and match them to the list.<br>
@@ -210,25 +214,74 @@ def find_matches(spectra, masses_to_match, rel_tolerance = 1e-5, float_arr_type 
 
 # In[11]:
 
+print('Running version:')
+print(sys.version)
+#get_ipython().run_cell_magic('timeit', '-r 5', #'find_matches(res, singleResDeltas, 1e-5)')
 
-get_ipython().run_cell_magic('timeit', '-r 5', 'find_matches(res, singleResDeltas, 1e-5)')
-
+t = lambda: find_matches(res, singleResDeltas, 1e-5)
+print('Timing the find_matches function:')
+num_reps = 50
+r = timeit.repeat(t, repeat=num_reps, number=1)
+print(f'Mean time {np.mean(r):.2f} s, standard deviation {np.std(r)*1000:.1f} ms for {num_reps} repeats')
 
 # In[12]:
 
 
 matches = find_matches(res, singleResDeltas, rel_tolerance = 1e-5)
-matches
+#print(matches)
 
 
 # In[13]:
 
 
-matches[ matches['Spectrum_idx'] == 1 ]
+#print(matches[ matches['Spectrum_idx'] == 1 ])
 
 
 # In[ ]:
 
+# We could also see how quick ar loops and string manipulatios.
+# Let's create random sequences of equal length and caluclate thier masses using the good old for loops
 
+aa_curated = [
+    'G', 'A', 'S', 'P', 'V', 'T', 'N', 'D', 'Q', 'K', 'E', 'M', 'H', 'F', 'R', 'Y', 'W'
+]
 
+# Create a list of random peptide sequences
 
+g = lambda: ''.join([ random.choice(aa_curated) for _ in range(20) ])
+sequences_list = [ g() for _ in range(10000)  ]
+print(len(sequences_list))
+
+# Create a function with for loops
+
+def calculate_masses_loop():
+    masses = []
+    for i in sequences_list:
+        mass = 18.010565
+        for j in i:
+            mass += AA_DELTAS[j]
+        masses.append(mass)
+
+    return masses
+
+print('Running version:')
+print(sys.version)
+print('Timing the calculate_masses_loop function:')
+num_reps = 200
+r = timeit.repeat(calculate_masses_loop, repeat=num_reps, number=1)
+print(f'Mean time {np.mean(r)*1000:.2f} ms, standard deviation {np.std(r)*1000:.2f} ms for {num_reps} repeats')
+
+# Redo the function with reduce and list comprehensions
+def calculate_masses_reduce():
+    def find_mass(seq):
+        return 18 + reduce(
+            (lambda x, y: x + y),
+            [ AA_DELTAS[x] for x in seq ]
+        )
+
+    return [ find_mass(x) for x in sequences_list ]
+
+print('Timing the calculate_masses_reduce function:')
+num_reps = 200
+r = timeit.repeat(calculate_masses_reduce, repeat=num_reps, number=1)
+print(f'Mean time {np.mean(r)*1000:.2f} ms, standard deviation {np.std(r)*1000:.2f} ms for {num_reps} repeats')
