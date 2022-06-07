@@ -1,5 +1,8 @@
 using DataFrames
 using BenchmarkTools
+using StatsBase
+
+
 
 function loadmgf(fname)
     FIELDS = ["TITLE=", "RTINSECONDS=", "PEPMASS=", "CHARGE=", "SCANS="]
@@ -33,7 +36,7 @@ function loadmgf(fname)
     spectra_array = []
     open(fname) do fh
         state = false
-        for line::String in eachline(fh)
+        for line in eachline(fh)
             
             if length(line) > 0 && isnumeric( line[1] ) && state == true
                 num_line = map( x -> tryparse(Float64, x), split(line, " ") )
@@ -83,14 +86,14 @@ res[501]
 
 res[501]["ms_data"]
 
-@benchmark loadmgf(fname)
+@benchmark loadmgf(fname) samples=200
 
 AA_DELTAS = Dict(
-    "G"=> 57.02147, "A"=> 71.03712, "S"=> 87.03203, "P"=> 97.05277, "V"=> 99.06842,
-    "T"=> 101.04768, "Ccam"=> 160.03065, "Cmes"=> 148.996912, "I/L"=> 113.08407,
-    "N"=> 114.04293, "D"=> 115.02695, "Q"=> 128.05858, "K"=> 128.09497, "E"=> 129.0426,
-    "M"=> 131.04049, "Mox"=> 147.0354, "H"=> 137.05891, "F"=> 147.06842, "R"=> 156.10112,
-    "Y"=> 163.06333, "W"=> 186.07932
+    'G'=> 57.02147, 'A'=> 71.03712, 'S'=> 87.03203, 'P'=> 97.05277, 'V'=> 99.06842,
+    'T'=> 101.04768, "Ccam"=> 160.03065, "Cmes"=> 148.996912, "I/L"=> 113.08407,
+    'N'=> 114.04293, 'D'=> 115.02695, 'Q'=> 128.05858, 'K'=> 128.09497, 'E'=> 129.0426,
+    'M'=> 131.04049, "Mox"=> 147.0354, 'H'=> 137.05891, 'F'=> 147.06842, 'R'=> 156.10112,
+    'Y'=> 163.06333, 'W'=> 186.07932
 )
 
 #Flatten the values from the dictionary
@@ -133,7 +136,7 @@ end
 m = matches(res, single_res_Δ, 1e-5)
 size(m)
 
-@benchmark matches(res, single_res_Δ, 1e-5) samples=5
+@benchmark matches(res, single_res_Δ, 1e-5) samples=50
 
 
 
@@ -169,6 +172,57 @@ size(m)
 
 m[ m.Spectrum_idx .== 2 , :]
 
-@benchmark matchesfuse(res, single_res_Δ, 1e-5) samples=5
+@benchmark matchesfuse(res, single_res_Δ, 1e-5) samples=50
 
+aa_curated = [
+    'G', 'A', 'S', 'P', 'V', 'T', 'N', 'D', 'Q', 'K', 'E', 'M', 'H', 'F', 'R', 'Y', 'W'
+]
 
+sample(aa_curated)
+
+a = 'H'
+a *= 'A'
+a
+
+a = ""
+for i = 1:20
+    a *= sample(aa_curated)
+end
+a
+
+length(a)
+
+sequences_list = Array([])
+for i = 1:10000
+    a = ""
+    for j = 1:20
+        a *= sample(aa_curated)
+    end
+    append!(sequences_list, [a])
+end
+length(sequences_list)
+
+sequences_list[1:5]
+
+for i in split("ERPPPGVMGDRSYPVRFVDP", "")
+    println(AA_DELTAS[i])
+end
+
+function calculate_masses_loop(sequences_list)
+    masses = Array{Float64}([])
+    for i in sequences_list
+        m = 18.010565
+        for j in i
+            m += AA_DELTAS[j]
+        end
+        append!(masses, [m])
+    end
+    masses
+end
+
+l = calculate_masses_loop(sequences_list)
+length(l)
+
+l[1:5]
+
+@benchmark calculate_masses_loop(sequences_list) samples=200
