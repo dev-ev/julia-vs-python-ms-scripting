@@ -226,3 +226,24 @@ length(l)
 l[1:5]
 
 @benchmark calculate_masses_loop(sequences_list) samples=200
+
+
+function calculate_masses_loop_prealloc(sequences_list)
+    num_iter = length(sequences_list)
+    masses = Array{Float64}(undef, num_iter)
+    for i = 1:num_iter
+        m = 18.010565
+        for j in sequences_list[i]
+            m += AA_DELTAS[j]
+        end
+        masses[i] = m
+    end
+    masses
+end
+
+l = calculate_masses_loop_prealloc(sequences_list)
+length(l)
+
+l[1:5]
+
+@benchmark calculate_masses_loop_prealloc(sequences_list) samples=200
